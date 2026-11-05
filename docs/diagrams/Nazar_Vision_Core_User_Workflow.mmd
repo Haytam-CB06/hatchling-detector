@@ -1,0 +1,22 @@
+%% Nazar Vision core user workflow, planning baseline (2026-10-18).
+%% Source: ../reference/Nazar_Vision_Project_Brief.pdf, pp. 7-16, 25-29.
+%% Tracking, alerts, live cameras, and field deployment are optional or later work.
+flowchart TD
+    A["Install/configure; locate unchanged source images"] --> B["Import dataset into FiftyOne"]
+    B --> C["Create editable reviewed annotations"]
+    C --> D["Inspect and correct boxes, classes, tags, duplicates, leakage"]
+    D --> P["Regenerate canonical labels from reviewed annotations"]
+    P --> E{"Pre-export validation passes?"}
+    E -- "No" --> F["Report affected samples; correct in FiftyOne"]
+    F --> D
+    E -- "Yes" --> G["Checkpoint working dataset"]
+    G --> H["Export current train/val/test with canonical labels"]
+    H --> I["Train or fine-tune YOLO; save weights and settings"]
+    I --> J["Evaluate on validation data; import predictions separately"]
+    J --> K{"Errors warrant a change?"}
+    K -- "Yes" --> D
+    K -- "No" --> L["Assess on held-out test set after development; report limits"]
+    L --> M["Load saved model; infer on prerecorded video or image sequence"]
+    M --> N["Review annotated output and present proof of concept"]
+    G -. "Restore needed" .-> R["Restore MongoDB checkpoint and resolve image paths"]
+    R --> D

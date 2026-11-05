@@ -1,0 +1,80 @@
+async (page) => {
+  const base='http://127.0.0.1:5051',root='output/playwright/user_manual/',saved=[];
+  page.setDefaultTimeout(15000);
+  await page.unroute('**/api/**');
+  await page.route('**/api/**',async route=>{
+    const request=route.request(),path=new URL(request.url()).pathname;
+    if(request.method()==='GET'||['/api/platform/prepare/preflight','/api/detect/image','/api/detect/video'].includes(path))return route.continue();
+    return route.abort();
+  });
+  await page.setViewportSize({width:1440,height:1050});
+  const card=title=>page.locator('section.nv-card').filter({has:page.getByRole('heading',{name:title,exact:true})}).first();
+  const go=async path=>{await page.goto(base+path);await page.locator('.nv-model-state.ready').waitFor();await page.waitForTimeout(350)};
+  const shot=async(name,locator)=>{
+    if(locator)await locator.screenshot({path:root+name+'.png'});else await page.screenshot({path:root+name+'.png'});
+    saved.push({name,context:'isolated copy; genuine recorded software-test artifacts or new baseline inference; no new training',url:page.url()});
+  };
+  const datasets=await (await page.request.get(base+'/api/platform/datasets')).json();
+  const dataset=datasets[0];
+  const detail=await (await page.request.get(base+'/api/platform/datasets/'+dataset.id)).json();
+  const positive=detail.images.find(i=>i.status==='verified_positive');
+  const negative=detail.images.find(i=>i.status==='verified_negative');
+  const sourcePath=async image=>{
+    const item=await (await page.request.get(base+'/api/review/images/'+image.id)).json();
+    return 'C:/Users/haytham/Downloads/engineering_design_I/'+item.source_path;
+  };
+  await go('/prepare');
+  await page.getByLabel(dataset.name,{exact:false}).check();
+  await page.getByRole('button',{name:'Select all approved (3)',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Select all approved (3)',exact:true}).click();
+  await page.getByRole('button',{name:'Continue',exact:false}).click();
+  await shot('26_example_grouping',card('Confirm events and partition assignments'));
+  await page.getByRole('button',{name:'Continue',exact:false}).click();
+  await page.getByRole('button',{name:'Run readiness checks',exact:false}).click();
+  await page.getByRole('heading',{name:'Ready for preparation',exact:true}).waitFor();
+  await shot('27_example_ready',card('Validate the dataset snapshot'));
+  await shot('28_example_version',card('Prepared dataset versions'));
+  await go('/training');
+  await shot('29_training_selection',card('Configure an experiment').locator('form'));
+  await card('Training history').getByRole('button',{name:'Inspect →',exact:true}).first().click();
+  await card('train job').locator('.nv-chart').first().waitFor();
+  await shot('30_training_monitor',card('train job'));
+  await shot('31_training_charts',card('train job').locator('.nv-two'));
+  await go('/evaluation');
+  await shot('32_evaluation_setup',card('Evaluate a registered model'));
+  await shot('33_evaluation_plots',card('Evaluation results').locator('.nv-two'));
+  await shot('34_evaluation_gallery',card('Evaluation results').locator('.nv-gallery'));
+  const inference=[];
+  const runImage=async(image,confidence,name)=>{
+    await go('/inference');
+    await page.locator('#media-input').setInputFiles(await sourcePath(image));
+    await page.locator('#confidence').focus();
+    await page.locator('#confidence').press(confidence===.95?'End':'Home');
+    if(confidence===.10)for(let i=0;i<5;i++)await page.locator('#confidence').press('ArrowRight');
+    const pending=page.waitForResponse(r=>r.url().endsWith('/api/detect/image')&&r.request().method()==='POST');
+    await page.getByRole('button',{name:'Run Detection',exact:false}).click();
+    const response=await pending;if(!response.ok())throw new Error(await response.text());
+    const result=await response.json();
+    await page.getByRole('link',{name:'Download image',exact:true}).waitFor();
+    await shot(name,page.locator('.results-area'));
+    if(name==='36_inference_negative'&&result.detections.length)throw new Error('Negative illustration returned boxes; do not miscaption');
+    inference.push({name,job_id:result.job_id,detections:result.detections.length,confidence});
+  };
+  await runImage(positive,.10,'35_inference_positive');
+  await runImage(negative,.95,'36_inference_negative');
+  await go('/inference');
+  await page.locator('#media-input').setInputFiles('C:/Users/haytham/Downloads/engineering_design_I/tmp/pdfs/user_manual/runtime/manual_real_video_excerpt.mp4');
+  const videoResponse=page.waitForResponse(r=>r.url().endsWith('/api/detect/video')&&r.request().method()==='POST');
+  await page.getByRole('button',{name:'Run Detection',exact:false}).click();
+  const created=await (await videoResponse).json();
+  await page.getByRole('link',{name:'Download video',exact:true}).waitFor({timeout:120000});
+  const video=page.locator('.result-media-wrap video');
+  await video.evaluate(el=>{if(Number.isFinite(el.duration))el.currentTime=Math.min(.4,el.duration/2)});
+  await page.waitForTimeout(300);
+  await shot('37_video_inference',page.locator('.results-area'));
+  await shot('38_inference_controls',page.locator('.sidebar').first());
+  await go('/improvement');await shot('39_active_learning',card('Inference sources available for review'));
+  await go('/monitoring');await shot('40_video_monitoring');
+  return {screenshots:saved,inference,video_job:created.job_id,dataset:dataset.name,
+    training:'No new training started; completed job/plots are the previously recorded three-image software fixture',captured_at:new Date().toISOString()};
+}

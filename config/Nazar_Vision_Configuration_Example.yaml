@@ -1,0 +1,23 @@
+# Design example only. Reconcile keys and paths with the existing Nazar Vision codebase.
+# The fields and mapping below come from the project brief, pp. 8-12.
+dataset:
+  name: nazar_vision_hatchlings
+  source_directory: REPLACE_WITH_LOCAL_DATASET_PATH
+  persistent: true
+  assignment_tags: [train, val, test, excluded]
+
+label_fields:
+  source: ground_truth_source
+  reviewed: ground_truth_reviewed
+  canonical: ground_truth_canonical
+
+canonical_mapping:
+  sea turtle: hatchling
+  non-sea-turtle: null
+
+# Design invariants for the eventual implementation:
+# - Exactly one assignment tag is required before export.
+# - Unknown reviewed labels and invalid bounding boxes block export.
+# - A null mapping excludes an annotation, not its image.
+# - Regenerate canonical labels automatically before every training-data export.
+# - Keep predictions in a separate field per evaluation run.

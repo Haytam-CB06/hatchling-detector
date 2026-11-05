@@ -1,0 +1,60 @@
+# Python and local tooling
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Frontend dependencies and build output
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+.playwright-cli/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+
+# Local data, model checkpoints, and generated run state
+/data/**
+!/data/README.md
+!/data/video/
+!/data/video/README.md
+!/data/video/real_leatherback_demo.mp4
+/artifacts/**
+!/artifacts/README.md
+/backups/**
+!/backups/README.md
+/nazar-vision-isolated/
+/docs/manual/
+/docs/Nazar_Vision_Hands_On_Build_Runbook.md
+/assets/presentation/
+/runs/
+/Ultralytics/
+*.pt
+*.pth
+*.onnx
+*.engine
+*.sqlite3
+*.db
+*.log
+*.avi
+*.mov
+
+# Keep the illustrated model-workspace guide under output/
+/output/*
+!/output/pdf/
+/output/pdf/*
+!/output/pdf/Hatchling_Detector_Model_Workspace_Guide.pdf
+
+# Scratch and generated files
+/tmp/
+.codex-build/
+.fiftyone/
+.vscode/
+.idea/

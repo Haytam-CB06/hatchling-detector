@@ -1,0 +1,171 @@
+%% Nazar Vision conceptual/logical ERD, version 1.0 (2026-10-18).
+%% Source: ../reference/Nazar_Vision_Project_Brief.pdf, pp. 5-16 and 25-27.
+%% This models ONE persistent FiftyOne working dataset, its MongoDB-backed
+%% sample fields, configuration versions, and reproducible file artifacts.
+%% Entity boxes are logical concepts; they do not prescribe SQL tables.
+erDiagram
+    SOURCE_DATASET ||--o{ MEDIA_SAMPLE : supplies
+    WORKING_DATASET ||--o{ MEDIA_SAMPLE : contains
+    MEDIA_SAMPLE ||--o{ ANNOTATION_BOX : carries
+
+    CLASS_MAPPING ||--|{ LABEL_MAPPING_ENTRY : defines
+    WORKING_DATASET ||--o{ DATASET_CHECKPOINT : checkpoints
+    DATASET_CHECKPOINT ||--o{ EXPORT_SNAPSHOT : precedes
+    CLASS_MAPPING ||--o{ EXPORT_SNAPSHOT : configures
+
+    EXPORT_SNAPSHOT ||--o{ TRAINING_RUN : supplies
+    TRAINING_RUN ||--o{ MODEL_ARTIFACT : saves
+    MODEL_ARTIFACT ||--o{ EVALUATION_RUN : evaluates
+    EXPORT_SNAPSHOT ||--o{ EVALUATION_RUN : evaluates_on
+    EVALUATION_RUN ||--o{ IMAGE_PREDICTION : produces
+    MEDIA_SAMPLE ||--o{ IMAGE_PREDICTION : receives
+    EVALUATION_RUN ||--o{ METRIC_RESULT : reports
+
+    VIDEO_SOURCE ||--o{ VIDEO_INFERENCE_RUN : feeds
+    MODEL_ARTIFACT ||--o{ VIDEO_INFERENCE_RUN : runs
+    VIDEO_INFERENCE_RUN ||--o{ FRAME_DETECTION : emits
+
+    SOURCE_DATASET {
+        string source_dataset_id PK
+        string title
+        string provider
+        string version
+        string license
+        string source_uri
+    }
+
+    WORKING_DATASET {
+        string working_dataset_id PK
+        string fiftyone_name
+        boolean persistent
+        datetime imported_at
+    }
+
+    MEDIA_SAMPLE {
+        string sample_id PK
+        string source_dataset_id FK
+        string working_dataset_id FK
+        string source_file_path
+        string source_split
+        string assignment_tags
+        string source_group_key
+        string content_sha256
+    }
+
+    ANNOTATION_BOX {
+        string annotation_id PK
+        string sample_id FK
+        string role
+        string class_label
+        float x
+        float y
+        float width
+        float height
+    }
+
+    CLASS_MAPPING {
+        string mapping_id PK
+        string config_path
+        string config_sha256
+        datetime captured_at
+    }
+
+    LABEL_MAPPING_ENTRY {
+        string mapping_entry_id PK
+        string mapping_id FK
+        string reviewed_label
+        string canonical_label_nullable
+    }
+
+    DATASET_CHECKPOINT {
+        string checkpoint_id PK
+        string working_dataset_id FK
+        datetime created_at
+        string mongodb_backup_uri
+        string image_manifest_uri
+        string dataset_fingerprint
+    }
+
+    EXPORT_SNAPSHOT {
+        string export_id PK
+        string checkpoint_id FK
+        string mapping_id FK
+        datetime exported_at
+        string yolo_export_uri
+        string split_manifest_uri
+        string export_sha256
+    }
+
+    TRAINING_RUN {
+        string training_run_id PK
+        string export_id FK
+        string model_family
+        string settings_uri
+        string settings_sha256
+        datetime started_at
+        string status
+    }
+
+    MODEL_ARTIFACT {
+        string model_artifact_id PK
+        string training_run_id FK
+        string weights_uri
+        string weights_sha256
+        string artifact_kind
+    }
+
+    EVALUATION_RUN {
+        string evaluation_run_id PK
+        string model_artifact_id FK
+        string export_id FK
+        string split_name
+        string predictions_field
+        string settings_uri
+        datetime evaluated_at
+    }
+
+    IMAGE_PREDICTION {
+        string prediction_id PK
+        string evaluation_run_id FK
+        string sample_id FK
+        string predicted_label
+        float confidence
+        string normalized_bbox
+    }
+
+    METRIC_RESULT {
+        string metric_result_id PK
+        string evaluation_run_id FK
+        string metric_name
+        string class_or_slice
+        float value
+        string evaluation_settings
+    }
+
+    VIDEO_SOURCE {
+        string video_source_id PK
+        string source_path
+        string source_kind
+        float frame_rate_nullable
+        string content_sha256
+    }
+
+    VIDEO_INFERENCE_RUN {
+        string video_run_id PK
+        string video_source_id FK
+        string model_artifact_id FK
+        string settings_uri
+        string annotated_output_uri
+        string detections_output_uri
+        datetime processed_at
+    }
+
+    FRAME_DETECTION {
+        string frame_detection_id PK
+        string video_run_id FK
+        int frame_index
+        float timestamp_seconds
+        string predicted_label
+        float confidence
+        string normalized_bbox
+    }
